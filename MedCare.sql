@@ -174,3 +174,52 @@ LEFT JOIN (
 WHERE c.status = 'Realizada'
 GROUP BY e.id, e.nome
 ORDER BY total_faturado DESC;
+
+create view vw_medicos_especialidades AS
+SELECT
+    m.nome AS medico,
+    m.crm,
+    e.nome AS especialidade,
+    m.valor_consulta
+FROM medicos m
+JOIN especialidade e ON m.especialidade_id = e.id
+ORDER BY m.valor_consulta DESC;
+
+create view vw_pacientes_consultas AS
+SELECT
+    c.id AS id_consulta,
+    p.nome AS paciente,
+    m.nome AS medico,
+    m.valor_consulta + COALESCE(SUM(ec.valor_exame), 0) AS valor_total
+FROM consultas c
+JOIN pacientes p ON c.paciente_id = p.id
+JOIN medicos m ON c.medico_id = m.id
+LEFT JOIN exames_consulta ec ON c.id = ec.consulta_id
+GROUP BY c.id, p.nome, m.nome, m.valor_consulta
+
+create view vw_medicos_consultas AS
+SELECT
+    nome AS medico,
+    crm,
+    valor_consulta
+FROM medicos
+WHERE valor_consulta > 300
+ORDER BY valor_consulta DESC;
+
+create view vw_faturamento_especialidades AS
+SELECT
+    e.nome AS especialidade,
+    SUM(m.valor_consulta + COALESCE(ex.total_exames, 0)) AS total_faturado
+FROM consultas c
+JOIN medicos m ON c.medico_id = m.id
+JOIN especialidade e ON m.especialidade_id = e.id
+LEFT JOIN (
+    SELECT
+        consulta_id,
+        SUM(valor_exame) AS total_exames
+    FROM exames_consulta
+    GROUP BY consulta_id
+) ex ON c.id = ex.consulta_id
+WHERE c.status = 'Realizada'
+GROUP BY e.id, e.nome
+ORDER BY total_faturado DESC;
